@@ -13,6 +13,7 @@ import (
 
 const (
 	defaultStoryFile = "gopher.json"
+	defaultGameMode  = "web"
 )
 
 func main() {
@@ -24,6 +25,9 @@ func main() {
 
 func mainLogic() error {
 	storyFile := flag.String("story", defaultStoryFile, "the story json file for all story arcs")
+	gameMode := flag.String("mode", defaultGameMode, "the game mode: web/cli")
+	flag.Parse()
+
 	file, err := os.Open(*storyFile)
 	if err != nil {
 		return errors.Wrap(err, "open story file")
@@ -36,14 +40,26 @@ func mainLogic() error {
 
 	arcs, err := parser.Parse(bytes)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "parse story arcs")
 	}
 
-	newGame, err := game.NewCliGame("intro", arcs)
-	if err != nil {
-		return errors.Wrap(err, "create cli game")
+	var newGame game.TextGame
+	switch *gameMode {
+	case "web":
+		newGame, err = game.NewWebGame("intro", arcs)
+	case "cli":
+		newGame, err = game.NewCliGame("intro", arcs)
+	default:
+		err = errors.New("unsupported game mode: " + *gameMode)
 	}
-	newGame.Start()
+	if err != nil {
+		return errors.Wrap(err, "create game")
+	}
+
+	err = newGame.Start()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
